@@ -404,25 +404,52 @@
             .trim();
     }
 
+    function stripReasoningBlocks(text) {
+        let cleaned = String(text || '');
+        const patterns = [
+            /<\s*(think|thinking|cot|reasoning|analysis|thought|inner_monologue)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
+            /&lt;\s*(think|thinking|cot|reasoning|analysis|thought|inner_monologue)\b[^&]*&gt;[\s\S]*?&lt;\s*\/\s*\1\s*&gt;/gi,
+            /\[\s*(think|thinking|cot|reasoning|analysis|thought|inner_monologue)\s*\][\s\S]*?\[\s*\/\s*\1\s*\]/gi,
+        ];
+
+        for (const pattern of patterns) {
+            cleaned = cleaned.replace(pattern, ' ');
+        }
+
+        return cleaned;
+    }
+
+    function extractTaggedBlocks(raw, tagName) {
+        const escapedTag = escapeRegExp(tagName);
+        const patterns = [
+            new RegExp(`<${escapedTag}\\b[^>]*>([\\s\\S]*?)<\\/${escapedTag}>`, 'gi'),
+            new RegExp(`&lt;${escapedTag}\\b[^&]*&gt;([\\s\\S]*?)&lt;\\/${escapedTag}&gt;`, 'gi'),
+            new RegExp(`\\[${escapedTag}\\]([\\s\\S]*?)\\[\\/${escapedTag}\\]`, 'gi'),
+        ];
+
+        const blocks = [];
+        for (const pattern of patterns) {
+            for (const match of raw.matchAll(pattern)) {
+                blocks.push(String(match[1] || ''));
+            }
+        }
+
+        return blocks;
+    }
+
     function extractLetterMessageText(text, settings) {
         const raw = String(text || '');
         const tagName = normalizeContentTagName(settings?.contentTagName);
 
         if (!tagName) {
-            return stripMarkup(raw);
+            return stripMarkup(stripReasoningBlocks(raw));
         }
 
-        const matcher = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>([\\s\\S]*?)<\\/${escapeRegExp(tagName)}>`, 'gi');
-        const parts = [];
+        const parts = extractTaggedBlocks(raw, tagName)
+            .map(part => stripMarkup(stripReasoningBlocks(part)))
+            .filter(Boolean);
 
-        for (const match of raw.matchAll(matcher)) {
-            const cleaned = stripMarkup(match[1]);
-            if (cleaned) {
-                parts.push(cleaned);
-            }
-        }
-
-        return parts.join('\n').trim();
+        return parts.at(-1) || '';
     }
 
     function selectBestSnippet(messages, settings) {
