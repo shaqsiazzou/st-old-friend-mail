@@ -437,6 +437,41 @@
         return blocks;
     }
 
+    function scoreTaggedContentBlock(text) {
+        const normalized = String(text || '').trim();
+        if (!normalized) {
+            return Number.NEGATIVE_INFINITY;
+        }
+
+        let score = Math.min(normalized.length, 1200) / 40;
+        const rewardPatterns = [
+            /[。！？?!…]/g,
+            /[“”"'「」『』]/g,
+            /\b(我|你|他|她|它|我们|他们|然后|只是|因为|如果|可是|仍然|已经)\b/g,
+        ];
+        const penaltyPatterns = [
+            /(状态栏|状态|摘要|总结|概括|提要|大纲|要点|禁用词|标签|数值|好感|数值变化|属性|面板|注意事项|要求|思考|分析|推理|cot|reasoning)/gi,
+            /(^|\n)\s*[-*•]\s*/g,
+            /(^|\n)\s*\d+\.\s*/g,
+            /[:：]\s*/g,
+            /[【\[][^【\]]{0,18}[】\]]/g,
+        ];
+
+        for (const pattern of rewardPatterns) {
+            score += (normalized.match(pattern) || []).length * 2.5;
+        }
+
+        for (const pattern of penaltyPatterns) {
+            score -= (normalized.match(pattern) || []).length * 6;
+        }
+
+        if (/\n/.test(normalized) && !/[。！？?!…]/.test(normalized)) {
+            score -= 10;
+        }
+
+        return score;
+    }
+
     function extractLetterMessageText(text, settings) {
         const raw = String(text || '');
         const tagName = normalizeContentTagName(settings?.contentTagName);
@@ -449,7 +484,9 @@
             .map(part => stripMarkup(stripReasoningBlocks(part)))
             .filter(Boolean);
 
-        return parts.at(-1) || '';
+        return parts
+            .map(part => ({ part, score: scoreTaggedContentBlock(part) }))
+            .sort((left, right) => right.score - left.score)[0]?.part || '';
     }
 
     function selectBestSnippet(messages, settings) {
