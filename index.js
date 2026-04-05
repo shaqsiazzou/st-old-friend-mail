@@ -1802,6 +1802,52 @@
         return generationPromise;
     }
 
+    async function debugInspectFragmentsForCharacter(query, options = {}) {
+        const settings = {
+            ...getSettings(),
+            ...(typeof options?.contentTagName === 'string'
+                ? { contentTagName: normalizeContentTagName(options.contentTagName) }
+                : {}),
+        };
+
+        const character = findCharacterForDebug(query);
+        if (!character) {
+            throw new Error(`找不到角色卡：${query}`);
+        }
+
+        const candidate = await rebuildCandidateForCharacter(character);
+        if (!candidate) {
+            throw new Error('当前角色没有可读取的聊天存档。');
+        }
+
+        const fragments = await collectCandidateFragments(candidate, settings);
+        const result = {
+            character: {
+                name: character.name,
+                avatar: character.avatar,
+            },
+            contentTagName: normalizeContentTagName(settings.contentTagName),
+            fragmentCount: fragments.length,
+            fragments: fragments.map(fragment => ({
+                fileName: fragment.fileName,
+                lastMes: fragment.lastMes,
+                preview: fragment.preview,
+                messages: fragment.messages.map(message => ({
+                    name: message.name,
+                    mes: message.mes,
+                })),
+            })),
+        };
+
+        console.info(`[${MODULE_NAME}] Cleaned fragment preview for ${character.name}`, result);
+        console.table(result.fragments.map(fragment => ({
+            fileName: fragment.fileName,
+            preview: fragment.preview,
+            messageCount: fragment.messages.length,
+        })));
+        return result;
+    }
+
     function exposeDebugCommands() {
         const api = {
             help() {
@@ -1809,12 +1855,20 @@
 __DML_DEBUG__.generateForCharacter('角色名')
 __DML_DEBUG__.generateForCharacter('角色名', { timeoutMs: 180000 })
 __DML_DEBUG__.generateForCharacter('角色名', { local: true })
+__DML_DEBUG__.inspectFragmentsForCharacter('角色名')
+__DML_DEBUG__.inspectFragmentsForCharacter('角色名', { contentTagName: 'content' })
 __DML_DEBUG__.showApiFailureCard({ title, message, detail, hint })
 __DML_DEBUG__.state()`);
             },
             generateForCharacter(query, options = {}) {
                 return debugGenerateForCharacter(query, options).catch(error => {
                     console.error(`[${MODULE_NAME}] Debug generate failed`, error);
+                    return null;
+                });
+            },
+            inspectFragmentsForCharacter(query, options = {}) {
+                return debugInspectFragmentsForCharacter(query, options).catch(error => {
+                    console.error(`[${MODULE_NAME}] Debug inspect fragments failed`, error);
                     return null;
                 });
             },
