@@ -94,6 +94,12 @@
                     </div>
 
                     <div class="settings_section">
+                        <label for="dml-content-tag-name">正文标签名</label>
+                        <input id="dml-content-tag-name" class="text_pole" type="text" placeholder="默认 content；留空则不过滤标签" />
+                        <div class="dml-help-text">抽取聊天片段时，只保留这个标签里的文本。默认会读取 <code>&lt;content&gt;...&lt;/content&gt;</code>。</div>
+                    </div>
+
+                    <div class="settings_section">
                         <label for="dml-analysis-system-prompt">分析模式提示词</label>
                         <textarea id="dml-analysis-system-prompt" class="text_pole textarea_compact" rows="6"></textarea>
                     </div>

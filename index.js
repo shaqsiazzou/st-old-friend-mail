@@ -20,6 +20,7 @@
         inactiveDays: 7,
         snippetsPerLetter: 3,
         cooldownDays: 14,
+        contentTagName: 'content',
         minMessagesPerSnippet: 6,
         maxMessagesPerSnippet: 10,
         maxCandidateCharacters: 20,
@@ -146,6 +147,26 @@
     function clampNumber(value, fallback, min, max) {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? clamp(parsed, min, max) : fallback;
+    }
+
+    function normalizeContentTagName(value) {
+        const text = String(value || '')
+            .trim()
+            .replace(/^<\s*/, '')
+            .replace(/\s*>$/, '')
+            .replace(/^\/+|\/+$/g, '')
+            .trim();
+
+        if (!text) {
+            return '';
+        }
+
+        const match = text.match(/^[A-Za-z][\w:-]*/);
+        return match ? match[0] : '';
+    }
+
+    function escapeRegExp(value) {
+        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     function shouldUseLocalGeneration(settings) {
@@ -377,14 +398,39 @@
             .trim();
     }
 
+    function extractLetterMessageText(text, settings) {
+        const raw = String(text || '');
+        const tagName = normalizeContentTagName(settings?.contentTagName);
+
+        if (!tagName) {
+            return stripMarkup(raw);
+        }
+
+        const matcher = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*>([\\s\\S]*?)<\\/${escapeRegExp(tagName)}>`, 'gi');
+        const parts = [];
+
+        for (const match of raw.matchAll(matcher)) {
+            const cleaned = stripMarkup(match[1]);
+            if (cleaned) {
+                parts.push(cleaned);
+            }
+        }
+
+        return parts.join('\n').trim();
+    }
+
     function selectBestSnippet(messages, settings) {
         const usableMessages = messages
             .filter(message => !message.is_system && typeof message.mes === 'string' && message.mes.trim())
-            .map(message => ({
-                name: String(message.name || '').trim() || 'Unknown',
-                mes: message.mes.trim(),
-                send_date: message.send_date || null,
-            }));
+            .map(message => {
+                const cleanedMes = extractLetterMessageText(message.mes, settings);
+                return {
+                    name: String(message.name || '').trim() || 'Unknown',
+                    mes: cleanedMes,
+                    send_date: message.send_date || null,
+                };
+            })
+            .filter(message => message.mes);
 
         const minWindow = clamp(settings.minMessagesPerSnippet, 3, 20);
         const maxWindow = clamp(settings.maxMessagesPerSnippet, minWindow, 30);
@@ -1207,6 +1253,7 @@
             inactiveDays: toPositiveInt($('#dml-inactive-days').val(), DEFAULT_SETTINGS.inactiveDays),
             snippetsPerLetter: clamp(toPositiveInt($('#dml-snippets-per-letter').val(), DEFAULT_SETTINGS.snippetsPerLetter), 1, 5),
             cooldownDays: clamp(toPositiveInt($('#dml-cooldown-days').val(), DEFAULT_SETTINGS.cooldownDays), 1, 90),
+            contentTagName: normalizeContentTagName($('#dml-content-tag-name').val()) || '',
             analysisSystemPrompt: String($('#dml-analysis-system-prompt').val() || '').trim() || DEFAULT_SETTINGS.analysisSystemPrompt,
             inCharacterSystemPrompt: String($('#dml-in-character-system-prompt').val() || '').trim() || DEFAULT_SETTINGS.inCharacterSystemPrompt,
         };
@@ -1224,6 +1271,7 @@
         $('#dml-inactive-days').val(settings.inactiveDays ?? DEFAULT_SETTINGS.inactiveDays);
         $('#dml-snippets-per-letter').val(settings.snippetsPerLetter ?? DEFAULT_SETTINGS.snippetsPerLetter);
         $('#dml-cooldown-days').val(settings.cooldownDays ?? DEFAULT_SETTINGS.cooldownDays);
+        $('#dml-content-tag-name').val(settings.contentTagName ?? DEFAULT_SETTINGS.contentTagName);
         $('#dml-analysis-system-prompt').val(settings.analysisSystemPrompt || DEFAULT_SETTINGS.analysisSystemPrompt);
         $('#dml-in-character-system-prompt').val(settings.inCharacterSystemPrompt || DEFAULT_SETTINGS.inCharacterSystemPrompt);
         $('#dml-api-key-status').text(settings.apiKey ? 'API Key 已保存在扩展设置中。' : '当前没有保存 API Key。');
