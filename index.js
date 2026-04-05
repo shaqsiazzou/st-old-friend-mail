@@ -1524,6 +1524,18 @@
         return date.toLocaleString('zh-CN', { hour12: false });
     }
 
+    function formatEnvelopeDateCode(value) {
+        const date = value ? new Date(value) : new Date();
+        if (Number.isNaN(date.getTime())) {
+            return '000000';
+        }
+
+        const year = String(date.getFullYear()).slice(-2);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}${month}${day}`;
+    }
+
     function formatLastActivityMeta(letter) {
         if (!letter) {
             return '最近聊天时间未知';
@@ -1785,6 +1797,8 @@
         const summary = escapeHtml(letter.summary || '');
         const coverCopy = escapeHtml(getCoverCopy(letter));
         const name = escapeHtml(resolveCharacterName(letter));
+        const dateCode = formatEnvelopeDateCode(letter.createdAt || letter.lastActivityAt || Date.now());
+        const dateBoxes = dateCode.split('').map(digit => `<span class="dml-postcode-digit">${digit}</span>`).join('');
         const avatarSources = getAvatarImageSources(context, letter?.character?.avatar);
         const bodyHtml = renderLetterBody(letter);
         const fragments = Array.isArray(letter.fragments) ? letter.fragments : [];
@@ -1803,6 +1817,22 @@
                     <div class="dml-envelope-shell">
                         <div class="dml-envelope-cover">
                             <div class="dml-cover-layout">
+                                <div class="dml-envelope-airmail-band dml-envelope-airmail-band--top" aria-hidden="true"></div>
+                                <div class="dml-envelope-airmail-band dml-envelope-airmail-band--bottom" aria-hidden="true"></div>
+                                <div class="dml-envelope-postcode">
+                                    <div class="dml-postcode-label">投递日期</div>
+                                    <div class="dml-postcode-boxes">${dateBoxes}</div>
+                                </div>
+                                <div class="dml-envelope-stamp-block">
+                                    <div class="dml-envelope-stamp-slot">贴邮票处</div>
+                                    <div class="dml-envelope-stamp">
+                                        <div class="dml-envelope-stamp-title">中国邮政</div>
+                                        <div class="dml-envelope-stamp-mark">
+                                            <div class="dml-envelope-stamp-star">★</div>
+                                        </div>
+                                        <div class="dml-envelope-stamp-value">80分</div>
+                                    </div>
+                                </div>
                                 <div class="dml-cover-portrait-wrap">
                                     <div class="dml-cover-portrait-frame">
                                         ${avatarSources.preferred
@@ -1814,6 +1844,7 @@
                                 <div class="dml-cover-copy">
                                     <div class="dml-envelope-title">${title}</div>
                                     <div class="dml-envelope-subtitle">A LETTER FROM THE PAST</div>
+                                    <div class="dml-envelope-seal" aria-hidden="true"></div>
                                     <div class="dml-cover-summary">${coverCopy}</div>
                                     <button class="menu_button dml-open-button" data-dml-action="open-envelope" data-dml-popup-id="${popupId}" type="button">打开信封</button>
                                 </div>
