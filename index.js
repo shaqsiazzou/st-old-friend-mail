@@ -866,6 +866,8 @@
                     const successTitle = localMode ? '已生成本地回忆信' : '已收到 AI 回忆信';
                     toastr.success(`${resolveCharacterName(letter)} 的来信已经准备好了`, successTitle);
                 }
+
+                setTimeout(() => openLetterPopup(letter), source === 'startup' ? 1200 : 250);
             } catch (error) {
                 patchRuntimeState({
                     lastError: error instanceof Error ? error.message : String(error),
@@ -1107,6 +1109,7 @@
                 const popupId = target.getAttribute('data-dml-popup-id');
                 const root = popupId ? document.getElementById(popupId) : null;
                 root?.querySelector('.dml-envelope-shell')?.classList.add('opened');
+                root?.classList.add('opened');
                 return;
             }
 
@@ -1191,10 +1194,21 @@
                 <div class="dml-letter-main">
                     <div class="dml-envelope-shell">
                         <div class="dml-envelope-cover">
-                            <div class="dml-envelope-icon"></div>
-                            <div class="dml-envelope-title">${title}</div>
-                            <div class="dml-envelope-subtitle">${teaser || '一封从旧聊天里慢慢浮出来的信，等你亲手拆开。'}</div>
-                            <button class="menu_button dml-open-button" data-dml-action="open-envelope" data-dml-popup-id="${popupId}" type="button">打开信封</button>
+                            <div class="dml-cover-layout">
+                                <div class="dml-cover-portrait-wrap">
+                                    <div class="dml-cover-portrait-frame">
+                                        ${avatar ? `<img class="dml-cover-portrait-image" src="${escapeHtml(avatar)}" alt="${name}">` : '<div class="dml-cover-portrait-image"></div>'}
+                                    </div>
+                                </div>
+
+                                <div class="dml-cover-copy">
+                                    <div class="dml-envelope-icon"></div>
+                                    <div class="dml-envelope-title">${title}</div>
+                                    <div class="dml-envelope-subtitle">A LETTER FROM THE PAST</div>
+                                    <div class="dml-cover-summary">${summary || teaser || '这张角色卡还有一些没说完的话，正等着你把故事接起来。'}</div>
+                                    <button class="menu_button dml-open-button" data-dml-action="open-envelope" data-dml-popup-id="${popupId}" type="button">打开信封</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="dml-letter-paper">
@@ -1208,6 +1222,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <div class="dml-letter-side">
@@ -1217,7 +1232,6 @@
                             <div class="dml-portrait-name">${name}</div>
                             <div class="dml-portrait-sub">${escapeHtml(formatLastActivityMeta(letter))}</div>
                             <div class="dml-portrait-sub">${escapeHtml(`生成于 ${formatDate(letter.createdAt)}`)}</div>
-                            <div class="dml-portrait-sub">${escapeHtml(letter.summary || '')}</div>
                             <div style="margin-top: 12px;">
                                 <button class="menu_button" data-dml-action="open-chat" data-dml-avatar="${escapeHtml(letter.character?.avatar || '')}" data-dml-chat-file="${escapeHtml(letter.openChatFile || '')}" type="button">重新打开这段聊天</button>
                             </div>
