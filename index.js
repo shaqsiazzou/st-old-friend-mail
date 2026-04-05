@@ -5,6 +5,7 @@
     const SETTINGS_HTML_PATH = '/scripts/extensions/third-party/st-daily-memory-letter/settings.html';
     const RUNTIME_STORAGE_KEY = `${MODULE_NAME}:runtime`;
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const INVALID_INACTIVITY_DAYS = 20000;
 
     const DEFAULT_SETTINGS = Object.freeze({
         enabled: true,
@@ -69,9 +70,55 @@
         return String(fileName || '').replace(/\.jsonl$/i, '');
     }
 
+    function normalizeUnixTimestamp(value) {
+        if (!Number.isFinite(value) || value <= 0) {
+            return null;
+        }
+
+        if (value >= 1e12) {
+            return value;
+        }
+
+        if (value >= 1e9) {
+            return value * 1000;
+        }
+
+        return null;
+    }
+
     function safeTimestamp(value) {
-        const timestamp = Number(new Date(value).getTime());
-        return Number.isFinite(timestamp) ? timestamp : 0;
+        if (value === null || value === undefined || value === '') {
+            return null;
+        }
+
+        if (typeof value === 'number') {
+            return normalizeUnixTimestamp(value);
+        }
+
+        const text = String(value).trim();
+        if (!text) {
+            return null;
+        }
+
+        if (/^\d+(\.\d+)?$/.test(text)) {
+            const numeric = normalizeUnixTimestamp(Number(text));
+            if (numeric) {
+                return numeric;
+            }
+        }
+
+        try {
+            const momentValue = getContext()?.timestampToMoment?.(value);
+            const timestamp = Number(momentValue?.valueOf?.());
+            if (Number.isFinite(timestamp) && timestamp > 0) {
+                return timestamp;
+            }
+        } catch {
+            // Ignore parser errors and keep falling back.
+        }
+
+        const timestamp = Number(new Date(text).getTime());
+        return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
     }
 
     function clamp(value, min, max) {
@@ -142,14 +189,51 @@
         return getSettings();
     }
 
-    function loadRuntimeState() {
-        const raw = readLocalJson(RUNTIME_STORAGE_KEY, DEFAULT_RUNTIME_STATE);
+    function sanitizeLetterRecord(letter) {
+        if (!letter || typeof letter !== 'object') {
+            return null;
+        }
+
+        const inactivityDays = Number(letter.inactivityDays);
+        if (!Number.isFinite(inactivityDays) || inactivityDays >= INVALID_INACTIVITY_DAYS) {
+            return null;
+        }
+
         return {
+            ...letter,
+            inactivityDays,
+            lastActivityAt: letter.lastActivityAt || null,
+        };
+    }
+
+    function normalizeRuntimeState(raw) {
+        const state = {
             ...structuredClone(DEFAULT_RUNTIME_STATE),
             ...(raw || {}),
             history: Array.isArray(raw?.history) ? raw.history : [],
             characterCooldowns: raw?.characterCooldowns && typeof raw.characterCooldowns === 'object' ? raw.characterCooldowns : {},
         };
+
+        const latestLetter = sanitizeLetterRecord(state.latestLetter);
+        const history = state.history
+            .map(item => sanitizeLetterRecord(item))
+            .filter(Boolean);
+
+        if (state.latestLetter && !latestLetter) {
+            state.lastRunAt = null;
+            state.lastError = '已清理旧版时间解析产生的无效来信缓存，请重新生成。';
+        }
+
+        return {
+            ...state,
+            latestLetter,
+            history,
+        };
+    }
+
+    function loadRuntimeState() {
+        const raw = readLocalJson(RUNTIME_STORAGE_KEY, DEFAULT_RUNTIME_STATE);
+        return normalizeRuntimeState(raw);
     }
 
     function saveRuntimeState(state) {
@@ -219,7 +303,7 @@
                 messageCount: Number(item.message_count || 0),
                 preview: String(item.preview_message || ''),
             }))
-            .filter(item => item.fileName);
+            .filter(item => item.fileName && item.lastMes);
     }
 
     async function getChatArchiveMessages(character, archive) {
@@ -311,7 +395,15 @@
                 }
 
                 const lastActivity = Math.max(...archives.map(archive => archive.lastMes || 0), 0);
+                if (!lastActivity) {
+                    continue;
+                }
+
                 const inactiveMs = Math.max(0, now - lastActivity);
+                const eligible = inactiveMs >= inactiveThresholdMs;
+                if (!eligible) {
+                    continue;
+                }
 
                 candidates.push({
                     character,
@@ -319,7 +411,7 @@
                     archiveCount: archives.length,
                     lastActivity,
                     inactiveMs,
-                    eligible: inactiveMs >= inactiveThresholdMs,
+                    eligible,
                 });
             } catch (error) {
                 console.warn(`[${MODULE_NAME}] Failed to search archives for ${character.name}:`, error);
@@ -554,6 +646,7 @@
                 internalName: candidate.character.avatar.replace(/\.png$/i, ''),
             },
             inactivityDays: Math.max(1, Math.round(candidate.inactiveMs / ONE_DAY_MS)),
+            lastActivityAt: candidate.lastActivity || null,
             archiveCount: candidate.archiveCount,
             openChatFile: newestArchive ? newestArchive.fileName : null,
             title: content.title,
@@ -760,6 +853,23 @@
         return date.toLocaleString('zh-CN', { hour12: false });
     }
 
+    function formatLastActivityMeta(letter) {
+        if (!letter) {
+            return '最近聊天时间未知';
+        }
+
+        const inactivityDays = Number(letter.inactivityDays);
+        const inactivityLabel = Number.isFinite(inactivityDays)
+            ? `${Math.max(1, Math.round(inactivityDays))} 天未活跃`
+            : '未活跃时间未知';
+
+        if (!letter.lastActivityAt) {
+            return inactivityLabel;
+        }
+
+        return `${inactivityLabel} · 最近聊天 ${formatDate(letter.lastActivityAt)}`;
+    }
+
     function renderState() {
         syncPayload();
 
@@ -779,7 +889,7 @@
         } else if (state.latestLetter) {
             const name = resolveCharacterName(state.latestLetter);
             statusText.text('今天的来信已经送达');
-            statusMeta.text(`${name} · ${state.latestLetter.inactivityDays} 天未活跃 · ${formatDate(state.latestLetter.createdAt)}`);
+            statusMeta.text(`${name} · ${formatLastActivityMeta(state.latestLetter)}`);
         } else if (settings.enabled) {
             statusText.text('今天还没有来信');
             statusMeta.text(state.lastError ? `上次执行信息：${state.lastError}` : '可以等待静默触发，也可以先手动生成测试一封。');
@@ -796,7 +906,7 @@
         const name = escapeHtml(resolveCharacterName(state.latestLetter));
         preview.html(`
             <div class="dml-preview-title">${escapeHtml(state.latestLetter.title || '今日来信')}</div>
-            <div class="dml-preview-meta">${name} · ${state.latestLetter.inactivityDays} 天未活跃 · ${escapeHtml(state.latestLetter.source || '')}</div>
+            <div class="dml-preview-meta">${name} · ${escapeHtml(formatLastActivityMeta(state.latestLetter))}</div>
             <div class="dml-preview-teaser">${escapeHtml(state.latestLetter.teaser || state.latestLetter.summary || '')}</div>
         `);
     }
@@ -941,7 +1051,8 @@
                         ${avatar ? `<img class="dml-portrait-image" src="${escapeHtml(avatar)}" alt="${name}">` : '<div class="dml-portrait-image"></div>'}
                         <div class="dml-portrait-meta">
                             <div class="dml-portrait-name">${name}</div>
-                            <div class="dml-portrait-sub">${escapeHtml(`${letter.inactivityDays || '?'} 天未活跃 · ${formatDate(letter.createdAt)}`)}</div>
+                            <div class="dml-portrait-sub">${escapeHtml(formatLastActivityMeta(letter))}</div>
+                            <div class="dml-portrait-sub">${escapeHtml(`生成于 ${formatDate(letter.createdAt)}`)}</div>
                             <div class="dml-portrait-sub">${escapeHtml(letter.summary || '')}</div>
                             <div style="margin-top: 12px;">
                                 <button class="menu_button" data-dml-action="open-chat" data-dml-avatar="${escapeHtml(letter.character?.avatar || '')}" data-dml-chat-file="${escapeHtml(letter.openChatFile || '')}" type="button">重新打开这段聊天</button>
