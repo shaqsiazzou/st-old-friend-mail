@@ -1124,6 +1124,7 @@
                     patchRuntimeState({
                         lastError: '无法重新读取当前角色的聊天存档，请先确认角色还存在且有可读聊天记录。',
                     });
+                    toastr.warning('无法重新读取当前角色的聊天存档，请先确认角色还存在且有可读聊天记录。', '重新发送给 AI 失败');
                     return;
                 }
 
@@ -1133,6 +1134,7 @@
                     patchRuntimeState({
                         lastError: '按当前设置没有从这张角色卡里提取到可用片段，无法重新发送给 AI。',
                     });
+                    toastr.warning('按当前设置没有从这张角色卡里提取到可用片段。你可以检查正文标签名，或尝试重新抽取。', '重新发送给 AI 失败');
                     return;
                 }
 
@@ -1375,6 +1377,11 @@
         if (busy) {
             statusText.text('今日故人来信正在书写中');
             statusMeta.text('扩展正在前台静默扫描不活跃聊天和历史存档，请稍等片刻。');
+        } else if (state.lastError) {
+            statusText.text('上一次生成没有完成');
+            statusMeta.text(state.latestLetter
+                ? `本次操作失败：${state.lastError}。你仍然可以查看上一封故人来信。`
+                : `上次执行信息：${state.lastError}`);
         } else if (state.latestLetter) {
             const name = resolveCharacterName(state.latestLetter);
             statusText.text('今天的故人来信已经送达');
@@ -1384,7 +1391,7 @@
             statusMeta.text('当前不会自动执行。请先填写 API，或在系统设置里启用本地生成。');
         } else if (settings.enabled) {
             statusText.text('今天还没有故人来信');
-            statusMeta.text(state.lastError ? `上次执行信息：${state.lastError}` : `当前模式：${getGenerationModeLabel(settings)}。可以等待静默触发，也可以先手动生成测试一封。`);
+            statusMeta.text(`当前模式：${getGenerationModeLabel(settings)}。可以等待静默触发，也可以先手动生成测试一封。`);
         } else {
             statusText.text('故人来信当前已关闭');
             statusMeta.text('打开功能并保存后，扩展会在启动时后台静默检查。');
