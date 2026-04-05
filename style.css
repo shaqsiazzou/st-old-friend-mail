@@ -167,7 +167,7 @@
     position: relative;
     max-width: 980px;
     margin: 0 auto;
-    min-height: 340px;
+    min-height: 0;
     color: #f4e8da;
     -webkit-text-fill-color: currentColor;
 }
@@ -248,52 +248,17 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    text-align: center;
+    text-align: left;
     padding: 8px 8px 8px 0;
 }
 
-.dml-envelope-icon {
-    position: absolute;
-    top: 4px;
-    right: 6px;
-    width: 62px;
-    height: 46px;
-    border-radius: 8px;
-    border: 2px solid rgba(110, 88, 60, 0.58);
-    background:
-        linear-gradient(180deg, rgba(255,255,255,0.12), rgba(0,0,0,0.06)),
-        linear-gradient(145deg, rgba(167, 132, 82, 0.82), rgba(135, 101, 58, 0.74));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
-}
-
-.dml-envelope-icon::before,
-.dml-envelope-icon::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    width: 38px;
-    height: 38px;
-    border-top: 2px solid rgba(110, 88, 60, 0.58);
-    border-left: 2px solid rgba(110, 88, 60, 0.58);
-    transform-origin: top left;
-}
-
-.dml-envelope-icon::before {
-    top: 8px;
-    transform: rotate(45deg);
-}
-
-.dml-envelope-icon::after {
-    top: 8px;
-    transform: rotate(225deg);
-}
-
 .dml-envelope-title {
-    margin-top: 8px;
-    font-size: 28px;
-    line-height: 1.35;
+    margin-top: 0;
+    max-width: 560px;
+    font-size: 26px;
+    line-height: 1.4;
     font-family: "Georgia", "Times New Roman", serif;
     color: #fff8ee;
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -301,7 +266,7 @@
 
 .dml-envelope-subtitle {
     margin-top: 6px;
-    max-width: 420px;
+    max-width: 520px;
     line-height: 1.5;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -312,7 +277,7 @@
 
 .dml-cover-summary {
     margin-top: 18px;
-    max-width: 500px;
+    max-width: 560px;
     font-size: 14px;
     line-height: 1.85;
     color: rgba(255, 250, 241, 0.96);
@@ -323,6 +288,7 @@
     margin-top: 20px;
     min-width: 164px;
     min-height: 44px;
+    align-self: flex-start;
     border-radius: 999px;
     color: #fff8ee;
     background: rgba(118, 89, 53, 0.18);
@@ -351,6 +317,16 @@
 .dml-envelope-shell.opened .dml-letter-paper {
     opacity: 1;
     transform: translateY(0) scale(1);
+}
+
+.dml-envelope-shell.opened {
+    overflow: visible;
+}
+
+.dml-envelope-shell.opened .dml-letter-paper {
+    position: relative;
+    inset: auto;
+    margin: 12px;
 }
 
 .dml-paper-header {
@@ -406,9 +382,6 @@
 
 .dml-paper-body {
     margin-top: 18px;
-    max-height: 360px;
-    overflow-y: auto;
-    padding-right: 4px;
     line-height: 1.82;
     color: #3d2a1e;
     -webkit-text-fill-color: currentColor;
@@ -510,10 +483,13 @@
 
     .dml-cover-copy {
         padding: 4px 0 12px;
+        align-items: center;
+        text-align: center;
     }
 
     .dml-envelope-title {
         font-size: 24px;
+        max-width: none;
     }
 
     .dml-cover-summary {
@@ -521,17 +497,7 @@
         line-height: 1.75;
     }
 
-    .dml-envelope-icon {
-        position: relative;
-        top: auto;
-        right: auto;
-        margin-left: auto;
-        margin-bottom: 8px;
-    }
-
     .dml-letter-paper {
-        position: relative;
-        inset: auto;
         margin: 12px;
         padding: 22px 18px 20px;
     }

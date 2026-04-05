@@ -391,14 +391,19 @@
         return best;
     }
 
-    async function collectCandidates(settings, runtimeState) {
+    async function collectCandidates(settings, runtimeState, options = {}) {
         const now = Date.now();
         const inactiveThresholdMs = settings.inactiveDays * ONE_DAY_MS;
         const cooldownThresholdMs = settings.cooldownDays * ONE_DAY_MS;
         const candidates = [];
+        const excludedAvatars = new Set(Array.isArray(options.excludeCharacterAvatars) ? options.excludeCharacterAvatars.filter(Boolean) : []);
         const characters = getContext().characters.filter(character => character?.avatar && character?.name);
 
         for (const character of characters) {
+            if (excludedAvatars.has(character.avatar)) {
+                continue;
+            }
+
             const cooldownAt = safeTimestamp(runtimeState.characterCooldowns?.[character.avatar]);
             if (cooldownAt && (now - cooldownAt) < cooldownThresholdMs) {
                 continue;
@@ -486,8 +491,8 @@
             }));
     }
 
-    async function selectCandidateWithFragments(settings, runtimeState) {
-        const candidates = await collectCandidates(settings, runtimeState);
+    async function selectCandidateWithFragments(settings, runtimeState, options = {}) {
+        const candidates = await collectCandidates(settings, runtimeState, options);
         const minDesiredFragments = Math.min(2, settings.snippetsPerLetter);
 
         for (const candidate of candidates) {
@@ -498,6 +503,18 @@
         }
 
         return null;
+    }
+
+    function buildCandidateFromLetter(letter) {
+        return {
+            character: {
+                name: resolveCharacterName(letter),
+                avatar: letter?.character?.avatar || '',
+            },
+            archiveCount: Number(letter?.archiveCount || 0),
+            inactiveMs: Math.max(1, Number(letter?.inactivityDays || 1)) * ONE_DAY_MS,
+            lastActivity: safeTimestamp(letter?.lastActivityAt),
+        };
     }
 
     function buildPrompt(candidate, fragments) {
@@ -788,7 +805,7 @@
         };
     }
 
-    async function generateLetter({ force = false, source = 'manual' } = {}) {
+    async function generateLetter({ force = false, source = 'manual', excludeCharacterAvatars = [] } = {}) {
         const settings = getSettings();
         const runtimeState = loadRuntimeState();
         const now = nowIso();
@@ -828,7 +845,9 @@
 
         generationPromise = (async () => {
             try {
-                const selection = await selectCandidateWithFragments(settings, loadRuntimeState());
+                const selection = await selectCandidateWithFragments(settings, loadRuntimeState(), {
+                    excludeCharacterAvatars,
+                });
                 if (!selection) {
                     patchRuntimeState({
                         lastError: 'No suitable inactive character archives found',
@@ -889,6 +908,77 @@
         return { started: true };
     }
 
+    async function rewriteLatestLetterWithAi() {
+        const settings = getSettings();
+        const latestLetter = loadRuntimeState().latestLetter;
+
+        if (!latestLetter) {
+            return { started: false, reason: 'missing-letter' };
+        }
+
+        if (shouldUseLocalGeneration(settings)) {
+            return { started: false, reason: 'local-mode' };
+        }
+
+        if (!canGenerateWithApi(settings)) {
+            patchRuntimeState({
+                lastError: '未配置外部 AI URL，无法重新发送给 AI。',
+            });
+            renderState();
+            return { started: false, reason: 'missing-api' };
+        }
+
+        if (generationPromise) {
+            return { started: false, reason: 'already-running' };
+        }
+
+        patchRuntimeState({
+            lastAttemptAt: nowIso(),
+            lastError: null,
+            lastSource: 'rewrite-ai',
+        });
+        renderState();
+
+        generationPromise = (async () => {
+            try {
+                const candidate = buildCandidateFromLetter(latestLetter);
+                const fragments = Array.isArray(latestLetter.fragments) ? latestLetter.fragments : [];
+
+                if (!fragments.length) {
+                    patchRuntimeState({
+                        lastError: '当前这封来信没有可重用的片段，无法重新发送给 AI。',
+                    });
+                    return;
+                }
+
+                const content = await callExternalAi(settings, candidate, fragments);
+                const letter = buildLetterRecord(candidate, fragments, content, 'external-ai');
+                const nextState = loadRuntimeState();
+
+                patchRuntimeState({
+                    latestLetter: letter,
+                    history: [letter, ...nextState.history.filter(item => item.id !== letter.id)].slice(0, 10),
+                    lastError: null,
+                });
+
+                toastr.success(`${resolveCharacterName(letter)} 的来信已由 AI 重写`, '已重新发送给 AI');
+                setTimeout(() => openLetterPopup(letter), 200);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                patchRuntimeState({
+                    lastError: `外部 AI 调用失败：${message}`,
+                });
+                console.error(`[${MODULE_NAME}] Rewrite AI failed`, error);
+                toastr.error(message, '重新发送给 AI 失败');
+            } finally {
+                generationPromise = null;
+                renderState();
+            }
+        })();
+
+        return { started: true };
+    }
+
     async function init() {
         try {
             syncPayload();
@@ -937,16 +1027,34 @@
             }
 
             if (result.reason === 'cooldown') {
-                toastr.info('24 小时内已经生成过来信了。如需覆盖，请点“重新生成”。');
+                toastr.info('24 小时内已经生成过来信了。如需覆盖，请点“重新发送给 AI”或“重新抽取”。');
             } else if (result.reason === 'missing-api') {
                 toastr.warning('请先填写 API，或者在系统设置里启用本地生成');
             }
         });
 
-        $('#dml-regenerate-now').on('click', async () => {
-            const result = await generateLetter({ force: true, source: 'manual-regenerate' });
+        $('#dml-rewrite-ai-now').on('click', async () => {
+            const result = await rewriteLatestLetterWithAi();
             if (result.started) {
-                toastr.info('正在重新生成新的回忆信');
+                toastr.info('正在把当前这封来信重新发送给 AI');
+            } else if (result.reason === 'missing-letter') {
+                toastr.warning('还没有现成来信，先生成一封再试试');
+            } else if (result.reason === 'local-mode') {
+                toastr.warning('当前处于本地生成模式，关闭后才能重新发送给 AI');
+            } else if (result.reason === 'missing-api') {
+                toastr.warning('请先填写 API，或者在系统设置里启用本地生成');
+            }
+        });
+
+        $('#dml-reshuffle-now').on('click', async () => {
+            const currentAvatar = loadRuntimeState().latestLetter?.character?.avatar;
+            const result = await generateLetter({
+                force: true,
+                source: 'manual-reshuffle',
+                excludeCharacterAvatars: currentAvatar ? [currentAvatar] : [],
+            });
+            if (result.started) {
+                toastr.info('正在重新抽取另一封来信');
             } else if (result.reason === 'missing-api') {
                 toastr.warning('请先填写 API，或者在系统设置里启用本地生成');
             }
@@ -1204,7 +1312,6 @@
                                 </div>
 
                                 <div class="dml-cover-copy">
-                                    <div class="dml-envelope-icon"></div>
                                     <div class="dml-envelope-title">${title}</div>
                                     <div class="dml-envelope-subtitle">A LETTER FROM THE PAST</div>
                                     <div class="dml-cover-summary">${summary || teaser || '这张角色卡还有一些没说完的话，正等着你把故事接起来。'}</div>
