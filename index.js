@@ -227,6 +227,12 @@
             changed = true;
         }
 
+        // Migrate the old hidden timeout default to the new 120s baseline.
+        if (Number(extensionSettings[MODULE_NAME].requestTimeoutMs) === 60000) {
+            extensionSettings[MODULE_NAME].requestTimeoutMs = DEFAULT_SETTINGS.requestTimeoutMs;
+            changed = true;
+        }
+
         if (changed) {
             context.saveSettingsDebounced();
         }
