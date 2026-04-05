@@ -1340,7 +1340,7 @@
                             </details>
 
                             <div class="dml-paper-actions">
-                                <button class="menu_button" data-dml-action="open-chat" data-dml-avatar="${escapeHtml(letter.character?.avatar || '')}" data-dml-chat-file="${escapeHtml(letter.openChatFile || '')}" type="button">重新打开这段聊天</button>
+                                <button class="menu_button dml-paper-action-button" data-dml-action="open-chat" data-dml-avatar="${escapeHtml(letter.character?.avatar || '')}" data-dml-chat-file="${escapeHtml(letter.openChatFile || '')}" type="button">重新打开这段聊天</button>
                             </div>
                         </div>
                     </div>
