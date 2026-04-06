@@ -213,6 +213,11 @@
         return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
     }
 
+    function toNonNegativeInt(value, fallback) {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+    }
+
     function clampNumber(value, fallback, min, max) {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? clamp(parsed, min, max) : fallback;
@@ -1968,9 +1973,9 @@
             apiUrl: String($('#dml-api-url').val() || '').trim(),
             apiKey: String($('#dml-api-key').val() || '').trim(),
             model: String($('#dml-model').val() || '').trim(),
-            inactiveDays: toPositiveInt($('#dml-inactive-days').val(), DEFAULT_SETTINGS.inactiveDays),
+            inactiveDays: clamp(toNonNegativeInt($('#dml-inactive-days').val(), DEFAULT_SETTINGS.inactiveDays), 0, 3650),
             snippetsPerLetter: clamp(toPositiveInt($('#dml-snippets-per-letter').val(), DEFAULT_SETTINGS.snippetsPerLetter), 1, 5),
-            cooldownDays: clamp(toPositiveInt($('#dml-cooldown-days').val(), DEFAULT_SETTINGS.cooldownDays), 1, 90),
+            cooldownDays: clamp(toNonNegativeInt($('#dml-cooldown-days').val(), DEFAULT_SETTINGS.cooldownDays), 0, 90),
             contentTagName: normalizeContentTagName($('#dml-content-tag-name').val()) || '',
             analysisSystemPrompt: String($('#dml-analysis-system-prompt').val() || '').trim() || DEFAULT_SETTINGS.analysisSystemPrompt,
             inCharacterSystemPrompt: String($('#dml-in-character-system-prompt').val() || '').trim() || DEFAULT_SETTINGS.inCharacterSystemPrompt,
