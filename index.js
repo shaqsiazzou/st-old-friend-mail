@@ -1455,7 +1455,6 @@
                                 action: 'generate',
                                 hasPreviousLetter: Boolean(loadRuntimeState().latestLetter),
                             }));
-                            toastr.error(message, '外部 AI 调用失败');
                         }
                         return;
                     }
@@ -1568,7 +1567,6 @@
                     action: 'rewrite',
                     hasPreviousLetter: Boolean(loadRuntimeState().latestLetter),
                 }));
-                toastr.error(message, '重新发送给 AI 失败');
             } finally {
                 generationPromise = null;
                 renderState();
