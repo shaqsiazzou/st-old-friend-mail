@@ -441,12 +441,7 @@
 @keyframes dml-envelope-arrive-mobile {
     0% {
         opacity: 0;
-        transform: translateY(64px) scale(0.86);
-    }
-
-    62% {
-        opacity: 1;
-        transform: translateY(-4px) scale(1.02);
+        transform: translate3d(0, 26px, 0) scale(0.5);
     }
 
     100% {
@@ -1465,9 +1460,8 @@
     }
 
     .dml-letter-popup:not(.opened) {
-        animation: dml-letter-popup-arrive-mobile 0.82s cubic-bezier(0.16, 0.84, 0.22, 1) both;
-        transform-origin: center 70%;
-        will-change: transform, opacity;
+        animation: none;
+        transform: none;
     }
 
     .dml-failure-card {
@@ -1516,7 +1510,9 @@
     }
 
     .dml-letter-popup:not(.opened) .dml-envelope-shell {
-        animation: none;
+        animation: dml-envelope-arrive-mobile 0.78s cubic-bezier(0.16, 0.84, 0.24, 1) both;
+        transform-origin: center 64%;
+        will-change: transform, opacity;
     }
 
     .dml-cover-layout {
