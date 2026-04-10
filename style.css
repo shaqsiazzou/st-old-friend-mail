@@ -6,6 +6,16 @@
     font-display: swap;
 }
 
+#dml-settings {
+    --dml-panel-text: color-mix(in srgb, var(--SmartThemeBodyColor) 82%, black 18%);
+    --dml-panel-muted: color-mix(in srgb, var(--SmartThemeBodyColor) 58%, var(--SmartThemeEmColor) 42%);
+    --dml-panel-soft: color-mix(in srgb, var(--SmartThemeBodyColor) 36%, var(--SmartThemeEmColor) 64%);
+    --dml-panel-surface: color-mix(in srgb, var(--SmartThemeBlurTintColor) 86%, var(--SmartThemeBodyColor) 14%);
+    --dml-panel-surface-strong: color-mix(in srgb, var(--SmartThemeBlurTintColor) 72%, var(--SmartThemeBorderColor) 28%);
+    --dml-panel-surface-hover: color-mix(in srgb, var(--SmartThemeBlurTintColor) 62%, var(--SmartThemeBorderColor) 38%);
+    --dml-panel-border: color-mix(in srgb, var(--SmartThemeBorderColor) 72%, var(--SmartThemeBodyColor) 28%);
+}
+
 #dml-settings .dml-panel {
     display: flex;
     flex-direction: column;
@@ -26,7 +36,7 @@
     writing-mode: horizontal-tb;
     white-space: nowrap;
     text-align: center;
-    color: #4f3624 !important;
+    color: var(--dml-panel-text) !important;
     -webkit-text-fill-color: currentColor !important;
     text-shadow: none !important;
 }
@@ -106,13 +116,13 @@
 
 #dml-settings .dml-primary-button {
     min-width: 110px;
-    color: #4a3020 !important;
+    color: var(--dml-panel-text) !important;
     -webkit-text-fill-color: currentColor !important;
-    background: linear-gradient(180deg, rgba(255, 250, 243, 0.98), rgba(230, 210, 178, 0.96)) !important;
-    border: 1px solid rgba(131, 93, 57, 0.28) !important;
+    background: linear-gradient(180deg, var(--dml-panel-surface), var(--dml-panel-surface-strong)) !important;
+    border: 1px solid var(--dml-panel-border) !important;
     box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.52),
-        0 8px 18px rgba(67, 45, 24, 0.1);
+        inset 0 1px 0 rgba(255,255,255,0.24),
+        0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 #dml-settings .dml-toolbar,
@@ -126,37 +136,38 @@
     min-width: 0;
     writing-mode: horizontal-tb;
     white-space: nowrap;
-    color: #4f3624 !important;
+    color: var(--dml-panel-text) !important;
     -webkit-text-fill-color: currentColor !important;
-    background: linear-gradient(180deg, rgba(255, 250, 243, 0.98), rgba(232, 213, 182, 0.96)) !important;
-    border: 1px solid rgba(131, 93, 57, 0.26) !important;
+    background: linear-gradient(180deg, var(--dml-panel-surface), var(--dml-panel-surface-strong)) !important;
+    border: 1px solid var(--dml-panel-border) !important;
     box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.52),
-        0 6px 14px rgba(67, 45, 24, 0.08);
+        inset 0 1px 0 rgba(255,255,255,0.24),
+        0 6px 14px rgba(0, 0, 0, 0.06);
 }
 
 #dml-settings .dml-primary-button:hover,
 #dml-settings .dml-primary-button:focus-visible,
 #dml-settings .dml-toolbar-button:hover,
 #dml-settings .dml-toolbar-button:focus-visible {
-    color: #412818 !important;
+    color: var(--dml-panel-text) !important;
     -webkit-text-fill-color: currentColor !important;
-    background: linear-gradient(180deg, rgba(255, 252, 246, 1), rgba(238, 219, 188, 0.98)) !important;
+    background: linear-gradient(180deg, var(--dml-panel-surface-hover), var(--dml-panel-surface-strong)) !important;
 }
 
 #dml-settings .dml-primary-button:disabled,
 #dml-settings .dml-toolbar-button:disabled {
-    color: rgba(95, 69, 48, 0.56) !important;
+    color: var(--dml-panel-soft) !important;
     -webkit-text-fill-color: currentColor !important;
-    background: linear-gradient(180deg, rgba(247, 241, 231, 0.9), rgba(227, 215, 196, 0.88)) !important;
-    border-color: rgba(131, 93, 57, 0.16) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--dml-panel-surface) 92%, transparent), color-mix(in srgb, var(--dml-panel-surface-strong) 88%, transparent)) !important;
+    border-color: color-mix(in srgb, var(--dml-panel-border) 56%, transparent) !important;
     box-shadow: none;
 }
 
 #dml-settings .dml-fold {
     border-radius: 16px;
-    border: 1px solid rgba(255, 225, 194, 0.12);
-    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.08));
+    border: 1px solid color-mix(in srgb, var(--dml-panel-border) 82%, transparent);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--dml-panel-surface) 88%, transparent), color-mix(in srgb, var(--dml-panel-surface-strong) 76%, transparent));
     overflow: hidden;
 }
 
@@ -166,7 +177,7 @@
     padding: 14px 16px;
     font-size: 14px;
     font-weight: 700;
-    color: #f4e2cb;
+    color: var(--dml-panel-text);
     -webkit-text-fill-color: currentColor;
     user-select: none;
     display: flex;
@@ -179,7 +190,7 @@
     font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.04em;
-    color: rgba(255, 239, 221, 0.46);
+    color: var(--dml-panel-soft);
 }
 
 #dml-settings .dml-fold-summary::-webkit-details-marker {
@@ -190,7 +201,7 @@
     content: "\f107";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
-    color: rgba(255, 239, 221, 0.82);
+    color: var(--dml-panel-muted);
     transition: transform 0.2s ease;
 }
 
@@ -238,15 +249,15 @@
     align-content: start;
     padding: 12px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 226, 194, 0.12);
-    background: rgba(255, 245, 232, 0.04);
+    border: 1px solid color-mix(in srgb, var(--dml-panel-border) 76%, transparent);
+    background: color-mix(in srgb, var(--dml-panel-surface) 92%, transparent);
     cursor: pointer;
     transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
 #dml-settings .dml-source-option:hover {
-    border-color: rgba(255, 226, 194, 0.24);
-    background: rgba(255, 245, 232, 0.06);
+    border-color: color-mix(in srgb, var(--dml-panel-border) 96%, transparent);
+    background: color-mix(in srgb, var(--dml-panel-surface-hover) 88%, transparent);
     transform: translateY(-1px);
 }
 
@@ -257,21 +268,21 @@
 #dml-settings .dml-source-option-title {
     font-size: 13px;
     font-weight: 700;
-    color: #fff3e1;
+    color: var(--dml-panel-text);
 }
 
 #dml-settings .dml-source-option-desc {
     font-size: 12px;
     line-height: 1.5;
-    color: rgba(255, 255, 255, 0.66);
+    color: var(--dml-panel-muted);
 }
 
 #dml-settings .dml-source-option:has(input:checked) {
-    border-color: rgba(255, 225, 194, 0.34);
+    border-color: color-mix(in srgb, var(--dml-panel-border) 100%, var(--SmartThemeQuoteColor) 16%);
     background:
-        radial-gradient(circle at top left, rgba(255, 214, 162, 0.12), transparent 56%),
-        rgba(255, 245, 232, 0.1);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        radial-gradient(circle at top left, color-mix(in srgb, var(--SmartThemeQuoteColor) 14%, transparent), transparent 56%),
+        color-mix(in srgb, var(--dml-panel-surface-hover) 90%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
 }
 
 #dml-settings .dml-source-note {
@@ -281,7 +292,7 @@
 #dml-settings .dml-help-text {
     font-size: 12px;
     line-height: 1.6;
-    color: rgba(255, 248, 236, 0.78);
+    color: var(--dml-panel-muted);
 }
 
 #dml-settings .dml-favorites-list {
